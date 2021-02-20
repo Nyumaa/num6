@@ -1,0 +1,557 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header text-center">
+                <h5 class="modal-title " id="exampleModalLongTitle">Create Room</h5>
+                <button type="button" id="closeButton" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="recipient-name" class="col-form-label">Name:</label>
+                    <input type="text" class="form-control" id="recipient-name">
+                </div>
+                <div class="tagify-item">
+                    <input class="" id="tagify-t" style="width: 100px;" name="qwe" placeholder="Write some tags..." value="css">
+                </div>
+                <div class="container text-center w-50 mt-3 gameBoard-oncreate" style="cursor: pointer;">
+                    <div class="row">
+                        <div class="col-4 p-1 border field 1">-</div>
+                        <div class="col-4 p-1 border field 2">-</div>
+                        <div class="col-4 p-1 border field 3">-</div>
+
+                        <div class="w-100"></div>
+                        <div class="col-4 p-1 border field 4">-</div>
+                        <div class="col-4 p-1 border field 5">-</div>
+                        <div class="col-4 p-1 border field 6">-</div>
+
+                        <div class="w-100"></div>
+                        <div class="col-4 p-1 border field 7">-</div>
+                        <div class="col-4 p-1 border field 8">-</div>
+                        <div class="col-4 p-1 border field 9">-</div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" id="createRoom" class="btn btn-primary">Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">MENU: </a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+            <li class="nav-item active">
+                <a style="cursor: pointer;" class="nav-link" id="createGame" data-toggle="modal" data-target="#exampleModalCenter">Create room</a>
+            </li>
+        </ul>
+    </div>
+    
+        <div class="form-inline">
+            <input class=" mr-sm-2"  type="search" id="tegifySearch" name="searchInput" placeholder="Search" aria-label="Search">
+            <button class="btn btn-outline-success my-auto my-sm-auto" id="buttonSearch">Search</button>
+        </div>
+
+</nav>
+
+<div id="mainq" class="container">
+    @*<div class="border border-dark">
+            <div>
+                <div class="m-3"><h4>GAME: NUMBER OF GAME</h4></div>
+                <div  class="container text-center w-50 mh-100 mt-3 mb-2 gameBoard-ingame" style="cursor: pointer;">
+                    <div class="row">
+                        <div class="col-4 p-2 border field 1">-</div>
+                        <div class="col-4 p-2 border field 2">-</div>
+                        <div class="col-4 p-2 border field 3">-</div>
+
+                        <div class="w-100"></div>
+                        <div class="col-4 p-2 border field 4">-</div>
+                        <div class="col-4 p-2 border field 5">-</div>
+                        <div class="col-4 p-2 border field 6">-</div>
+
+                        <div class="w-100"></div>
+                        <div class="col-4 p-2 border field 7">-</div>
+                        <div class="col-4 p-2 border field 8">-</div>
+                        <div class="col-4 p-2 border field 9">-</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>*@
+    @*<div class="row">
+        <div class="text-light col-3 border m-4 bg-dark game">
+            <div class="m-2">Name: testName12345</div>
+            <div class="m-2">Tags: c#</div>
+            <div class="mt-4 ml-2 mb-1"><button type="button" class="btn btn-outline-success btn-sm"> Join </button></div>
+        </div>
+        <div class="col-3 border m-4 bg-dark game"></div>
+        <div class="col-3 border m-4 bg-dark game"></div>
+    </div>
+    <div class="row">
+        <div class="col-3 border m-4 bg-dark game 1">1</div>
+        <div class="col-3 border m-4 bg-dark game 2">2</div>
+    </div>*@
+</div>
+
+
+@section Scripts{
+
+    <script src="~/lib/tagify/jQuery.tagify.min.js"></script>
+    <script>
+        const hubConnection = new signalR.HubConnectionBuilder()
+            .withUrl("/Rooms")
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        async function start() {
+            try {
+                await hubConnection.start();
+                console.log("SignalR Connected");
+            } catch (err) {
+                console.log(err);
+                setTimeout(start, 5000);
+            }
+        }
+        // Statuses: create, waiting, connecting, ingame, end;
+        var gameStatus = 'create';
+        var game = '';
+        var playerLead = 2;
+        var playerPos = 1;
+        var tegifySearch;
+        function createMatrix() {
+            var matrix = [];
+            for (var i = 0; i < 9; i++) {
+                matrix[i] = -1;
+            }
+            return matrix;
+        }
+
+        function updateStateCell(matr, pos, value) {
+            matr[pos - 1] = value;
+        }
+
+        function checkPositionMatrix(matr, pos) {
+
+            if (matr[pos - 1] === -1) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        function makeMove(matr, pos, move) {
+            if (checkPositionMatrix(matr, pos)) {
+                updateStateCell(matr, pos, move);
+                return true;
+            } else {
+                return false;
+            }
+        }
+        function compare(a1, a2) {
+            return a1.length === a2.length && a1.every((v, i) => v === a2[i])
+        }
+        function checkMatrixStatus() {
+            const winnersTactics = [
+                [0,3,6],        
+                [1,4,7],   
+                [2,5,8],
+                [0, 1, 2],
+                [3, 4, 5],
+                [6, 7, 8],
+                [2, 4, 6],
+                [0,4,8]
+            ];
+            var array = [];
+            var countMoves = 0;
+            for (var i = 0; i < 9; i++) {
+                if (matrix[i] === playerPos)
+                    array.push(i);
+                if (matrix[i] != -1) {
+                    countMoves++;
+                }
+            }
+            if (countMoves === 9)
+                return 2;
+            for (var i = 0; i < 8; i++) {
+                if (compare(array, winnersTactics[i])) 
+                    return 1;
+            }
+            return 0;
+        }
+
+        function changeStateOnBoard(element) {
+            if (gameStatus === 'create') {
+                var elements = $('.gameBoard-oncreate > .row > .field');
+                for (var i = 0; i < 9; i++) {
+                    elements[i].innerHTML = ('-');
+                }
+                element.innerHTML = ('X');
+                var classes = element.classList;
+                var num = classes[classes.length - 1];
+                matrix = createMatrix();
+                matrix[num - 1] = 1;
+            } else if (gameStatus === 'ingame') {
+                if (playerLead === playerPos) {
+                    var classes = element.classList;
+                    var num = classes[classes.length - 1];
+                    if (element.innerHTML === '-') {
+                        if (playerPos === 1) {
+                            element.innerHTML = ('X');
+                            matrix[num - 1] = 1;
+                        }
+                        else {
+                            element.innerHTML = ('O');
+                            matrix[num - 1] = 2;
+                        }
+                        hubConnection.invoke('MoveOnBoard', matrix.join(','), game);
+                        var statusInGame = checkMatrixStatus();
+                        if (statusInGame === 1) {
+                            
+                            alert("Вы победили, поздравляю вас!");
+                            hubConnection.invoke('EndGame', game, 'Win');
+                            location.href = 'Home';
+                        } else if (statusInGame === 2) {
+                            
+                            alert("Ничья!");
+                            hubConnection.invoke('EndGame', game, 'Draw');
+                            location.href = 'Home';
+                        }
+                    } else {
+                        alert("Попробуйте поставить в другое место!");
+                    }
+                } else {
+                    alert("Сейчас ход другого игрока, ожидайте!")
+                }
+            }
+        }
+        var matrix = createMatrix();
+        $(".field").click(function () { changeStateOnBoard(this) });
+        $("#buttonSearch").click(function () { hubConnection.invoke("Search", $('#tegifySearch').val().toString()) });
+        $("#createGame").click(function () {
+            if(gameStatus != 'create'){
+                if (confirm('Вы хотите выйти из текущей игры? (Тогда вы проиграйте)')) {
+                    game = '';
+                    location.href = 'Home';
+                }
+            }else{
+            var elements = $('.gameBoard-oncreate > .row > .field');
+            for (var i = 0; i < 9; i++) {
+                elements[i].innerHTML = ('-');
+            }
+            matrix = createMatrix();
+            }
+            
+            
+        });
+
+        function testMatrix() {
+            for (var i = 0; i < 9; i++) {
+                if (matrix[i] != -1)
+                    return true;
+            }
+            return false;
+        }
+        $('#createRoom').click(function () {
+            if (testMatrix()) {
+                gameStatus = 'waiting';
+                game = hubConnection.connectionId;
+                hubConnection.invoke('CreateGame', hubConnection.connectionId, $('#recipient-name').val(), $('#tagify-t').val());
+                $.ajax({
+                    url: "/Home/CreateRoom",
+                    type: "POST",
+                    data: {
+                        id: hubConnection.connectionId,
+                        name: $('#recipient-name').val(),
+                        tags: $('#tagify-t').val().toString(),
+                        matrix: matrix.join(',')
+                    }
+                });
+
+                $('#mainq').html('');
+                var el = document.createElement("div");
+                el.setAttribute('class', 'border border-dark');
+                el.innerHTML = `<div>
+                <div class="m-3"><h4>GAME: `+ hubConnection.connectionId + `</h4></div>
+                <div  class="container text-center w-50 mh-100 mt-3 mb-2 gameBoard-ingame" style="cursor: pointer;">
+                    <div class="row">
+                        <div class="col-4 p-2 border field 1">-</div>
+                        <div class="col-4 p-2 border field 2">-</div>
+                        <div class="col-4 p-2 border field 3">-</div>
+
+                        <div class="w-100"></div>
+                        <div class="col-4 p-2 border field 4">-</div>
+                        <div class="col-4 p-2 border field 5">-</div>
+                        <div class="col-4 p-2 border field 6">-</div>
+
+                        <div class="w-100"></div>
+                        <div class="col-4 p-2 border field 7">-</div>
+                        <div class="col-4 p-2 border field 8">-</div>
+                        <div class="col-4 p-2 border field 9">-</div>
+                    </div>
+                </div>
+
+            </div>`;
+                $("#mainq").append(el);
+                var elements = $('.gameBoard-ingame > .row > .field');
+                for (var i = 0; i < 9; i++) {
+                    if (matrix[i] === 1) {
+                        elements[i].innerHTML = 'X';
+                        break;
+                    }
+                }
+                
+                var difference = $('#tagify-t').val().toString().split('.').filter(x => !tegify.settings.whitelist.includes(x));
+                if (difference != '') {
+                    $.ajax({
+                        url: "/Home/UpdateWhiteList",
+                        type: "POST",
+                        data: {
+                            words: difference.join('.')
+                        }
+                    });
+                }
+                
+                $('#closeButton').click();
+                $(".field").click(function () { changeStateOnBoard(this) });
+            } else {
+                alert("Сделайте первый ход!");
+            }
+        })
+
+        function joinGame(group) {
+            gameStatus = 'connecting';
+            game = group;
+            playerPos = 2;
+            hubConnection.invoke("JoinGame", group);
+            $.ajax({
+                url: "/Home/JoinGame",
+                type: "POST",
+                data: {
+                    id: group,
+                    idPlayer: hubConnection.connectionId
+                }
+            });
+            
+        }
+
+        function getNumElement() {
+            if ($('#mainq > .row:last > div:last').attr('class'))
+                return Number($('#mainq > .row:last > div:last').attr('class').split(' ')[5]);
+            else
+                return 4;
+        }
+
+        hubConnection.on("Search", function (data) {
+            $("#mainq").html('');
+            if (data != '') {
+                var rooms = data.split(',');
+                for (var i = 0; i < rooms.length; i++) {
+                    var room = rooms[i].split('|||');
+                    addGames(room[0], room[1], room[2]);
+                }
+            }
+            
+        });
+           
+        
+
+        hubConnection.on("AddGame", function (group, name, tags) {
+            addGames(group, name, tags);
+        });
+
+        hubConnection.on("EnemyLeave", function () {
+            if (gameStatus != 'End') {
+                alert("Противник вышел раньше времени, вам засчитана победа!");
+                location.href = 'Home';
+            }
+            
+        });
+
+        hubConnection.on("JoinGame", function (id, name, matrixq, tags) {
+            if (gameStatus === 'connecting') {
+                $('#mainq').html('');
+                var matrixString = matrixq.split(',');
+                for (var i = 0; i < 9; i++) {
+                    matrix[i] = Number(matrixString[i]);
+                }
+                var el = document.createElement("div");
+                el.setAttribute('class', 'border border-dark');
+                el.innerHTML = `<div>
+                <div class="m-3"><h4>GAME: `+ id + `</h4></div>
+                <div  class="container text-center w-50 mh-100 mt-3 mb-2 gameBoard-ingame" style="cursor: pointer;">
+                    <div class="row">
+                        <div class="col-4 p-2 border field 1">-</div>
+                        <div class="col-4 p-2 border field 2">-</div>
+                        <div class="col-4 p-2 border field 3">-</div>
+
+                        <div class="w-100"></div>
+                        <div class="col-4 p-2 border field 4">-</div>
+                        <div class="col-4 p-2 border field 5">-</div>
+                        <div class="col-4 p-2 border field 6">-</div>
+
+                        <div class="w-100"></div>
+                        <div class="col-4 p-2 border field 7">-</div>
+                        <div class="col-4 p-2 border field 8">-</div>
+                        <div class="col-4 p-2 border field 9">-</div>
+                    </div>
+                </div>
+
+            </div>`;
+                $("#mainq").append(el);
+                var elements = $('.gameBoard-ingame > .row > .field');
+                for (var i = 0; i < 9; i++) {
+                    if (matrix[i] === 1) {
+                        elements[i].innerHTML = 'X';
+                        break;
+                    }
+                }
+                gameStatus = 'ingame';
+                setTimeout(hubConnection.invoke("UpdateStatuses"), 1500);
+                $(".field").click(function () { changeStateOnBoard(this) });
+            } else {
+                gameStatus = 'ingame';
+                alert("Игрок успешно подключился, игра началась!");
+            }
+           
+        });
+
+        hubConnection.on("MoveOnBoard", function (matr) {
+            var array = matr.split(',');
+            var fields = $('.gameBoard-ingame .field');
+            for (var i = 0; i < 9; i++) {
+                matrix[i] = Number(array[i]);
+                if (Number(array[i]) === 1) {
+                    fields[i].innerHTML = 'X';
+                } else if (Number(array[i]) === 2) {
+                    fields[i].innerHTML = 'O';
+                }
+            }
+            if (playerLead === 2) {
+                playerLead = 1;
+            } else {
+                playerLead = 2;
+            }
+        })
+       
+        function addGames(group, name , tags) {
+            var numOfElement = getNumElement();
+            var el = document.createElement("div");
+
+            el.innerHTML = `<div class="m-2 text-light">Name: ` + name + `</div>
+                                <div class="m-2 tagify-item"><input readonly class="border-0"  name="`+ name + `" value=""> </div>
+                                <div class="mt-4 ml-2 mb-1"><button type="button" onclick="joinGame('` + group.toString() + `')" class="btn btn-outline-success btn-sm" data-id="` + group + `"> Join </button></div>
+                                `;
+            if (numOfElement < 3) {
+                el.setAttribute("class", "col-3 border m-4 bg-dark game " + (numOfElement + 1));
+                $(el).insertAfter("#mainq > .row:last > div:last");
+            } else if (numOfElement === 4) {
+                var div = document.createElement("div");
+                div.setAttribute("class", "row");
+                el.setAttribute("class", "col-3 border m-4 bg-dark game 1");
+                $("#mainq").append(div);
+                $("#mainq > .row:last").append(el);
+            }
+            else {
+                var div = document.createElement("div");
+                div.setAttribute("class", "row");
+                $(div).insertAfter("#mainq > .row:last");
+                el.setAttribute("class", "col-3 border m-4 bg-dark game 1");
+                $("#mainq > .row:last").append(el);
+            }
+            var basic = document.querySelector(`input[name=`+ name +`]`);
+            var tagify = new Tagify(basic, {
+                originalInputValueFormat: valuesArr => valuesArr.map(item => item.value).join('.')
+            });
+            var tagsList = tags.split('.');
+            tagify.addTags(tagsList);
+        }
+
+        hubConnection.on("LoadInfoOnConnect", function (data, data2) {
+            if (data != "") {
+                var rooms = data.split(',');
+                for (var i = 0; i < rooms.length; i++) {
+                    var room = rooms[i].split('|||');
+                    addGames(room[0], room[1], room[2]);
+                }
+            }
+            var whitelistQ = [''];
+            if (data2 != "") {
+                whitelistQ = data2.split(',');
+            } else {
+                whitelistQ = ['C#'];
+            }
+            tegify.destroy();
+            var basic = document.querySelector("input[name=qwe]");
+            var input = document.querySelector("input[name=searchInput]");
+            tegify = new Tagify(basic, {
+                whitelist: whitelistQ,
+                dropdown: {
+                    maxItems: 15,
+                    classname: "tags-look",
+                    enabled: 0,
+                    closeOnSelect: false
+                },
+                originalInputValueFormat: valuesArr => valuesArr.map(item => item.value).join('.')
+            });  
+
+            tegifySearch = new Tagify(input, {
+                whitelist: whitelistQ,
+                dropdown: {
+                    maxItems: 15,
+                    classname: "tags-look",
+                    enabled: 0,
+                    closeOnSelect: false
+                },
+                originalInputValueFormat: valuesArr => valuesArr.map(item => item.value).join('.')
+            });   
+        });
+
+        hubConnection.on("EndGame", function (status) {
+            gameStatus = 'End';
+            if (status === 'Win')
+                alert("Вы проиграли, попытайте свои навыки в следующей игре! Удачи!");
+            else
+                alert("Ничья!")
+            
+            location.href = 'Home';
+        });
+
+        hubConnection.on("UpdateStatuses", function (data) {
+            if (data != '') {
+                $("#mainq").html('');
+                var rooms = data.split(',');
+                for (var i = 0; i < rooms.length; i++) {
+                    var room = rooms[i].split('|||');
+                    addGames(room[0], room[1], room[2]);
+                }
+            }
+        });
+        
+        start();
+        var basicBootstrapTagify = document.querySelector("input[name=qwe]");
+        var tegify = new Tagify(basicBootstrapTagify, {
+            whitelist: ['C#'],
+            dropdown: {
+                maxItems: 15,
+                classname: "tags-look",
+                enabled: 0,
+                closeOnSelect: false
+            },
+            originalInputValueFormat: valuesArr => valuesArr.map(item => item.value).join('.')
+        });  
+        tegify.on('keydown', function (e) {
+
+        });
+
+    </script>
+}
