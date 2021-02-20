@@ -32,7 +32,7 @@ namespace num6
             services.AddControllersWithViews();
             services.AddSignalR();
             services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlServer(Configuration.GetConnectionString("SecondConnection")));
+                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
             services.AddTransient<IRepository, Repository>();
         }
 
